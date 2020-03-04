@@ -12,13 +12,15 @@ fn main() -> std::io::Result<()> {
 //    let replace_file = File::open("./fields.data")?;
     let file_contents = fs::read_to_string("./fields.data")?;
 
-    //    let re = Regex::new(r"^\s*(?<key>[A-Za-z0-9]+):\s*(?<value>.*)$").unwrap();
+    let re = Regex::new(r"^\s*(?<key>[A-Za-z0-9]+):\s*(?<value>.*)$").unwrap();
 
-    let re = Regex::new(r"'([^']+)'\s+\((\d{4})\)").unwrap();
+//    let re = Regex::new(r"'([^']+)'\s+\((\d{4})\)").unwrap();
 
-    let caps = re.captures(&file_contents).unwrap();
+    match re.captures(&file_contents) {
+        Ok(caps) => println!("capture groups = {:?}", caps),
+        Err(e) => println("error: {}", e),
+    };
 
-    println!("capture groups = {:?}", caps);
 
     // fn extract_login(input: &str) -> Option<&str> {
     //     lazy_static! {
