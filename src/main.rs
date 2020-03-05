@@ -88,20 +88,41 @@ fn main() {
     let data = get_data();
 
     let path = Path::new("./templates/template1.html");
-    handlebars.register_template_file("jon", path).expect("render error");
+    handlebars.register_template_file("template1", path).expect("render error");
+    let path = Path::new("./templates/template2.html");
+    handlebars.register_template_file("template2", path).expect("render error");
 
     let start = Instant::now();
 
     // For each contract found in the data use the template and generated the result
-    for contract in data {
+    for contract in &data {
         let file_name = format!("./output/contract-{}.html", contract.id);
         let mut output_file = File::create(&file_name).expect("file output open error");
-        handlebars.render_to_write("jon", &contract, &mut output_file).expect("render error");
+        handlebars.render_to_write("template1", &contract, &mut output_file).expect("render error");
     }
 
     let duration = start.elapsed();
 
-    println!("Time elapsed in templating is: {:?}", duration);
+    println!("Time elapsed for rendering template1 is: {:?}", duration);
+
+
+    // For each contract found in the data use the template and generated the result
+    for contract in &data {
+        let file_name = format!("./output/email-{}.html", contract.id);
+        let mut output_file = File::create(&file_name).expect("file output open error");
+        handlebars.render_to_write("template2", &contract, &mut output_file).expect("render error");
+    }
+
+    let duration = start.elapsed();
+
+    println!("Time elapsed for rendering template2 is: {:?}", duration);
+
+
+
+
+
+
+
 }
 
 #[derive(Serialize, Deserialize, Debug)]
