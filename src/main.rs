@@ -11,6 +11,8 @@ use std::path::Path;
 
 use std::error::Error;
 
+use std::time::{Duration, Instant};
+
 //use serde_json::Error;
 
 use std::fs::File;
@@ -22,158 +24,92 @@ use handlebars::{
 
 use std::fs;
 
-
-
-
-
-
-
-
 // define a custom helper
-fn format_helper(
+fn total_amount_due_helper (
     h: &Helper,
     _: &Handlebars,
     _: &Context,
     _: &mut RenderContext,
     out: &mut dyn Output,
 ) -> Result<(), RenderError> {
-    let param = h
+    let currency = h
         .param(0)
         .ok_or(RenderError::new("Param 0 is required for format helper."))?;
-    let rendered = format!("{} pts", param.value().render());
+    let accounts = h
+        .param(1)
+        .ok_or(RenderError::new("Param 0 is required for format helper."))?;
+
+    let accs: Vec<Account> = serde_json::from_value(accounts.value().clone()).expect("expected json value");
+    let mut total: f64 = 0.0;
+    for a in accs {
+        total += a.amount_due;
+    }
+
+    let rendered = format_money(currency.value().render(), total);
+
     out.write(rendered.as_ref())?;
     Ok(())
 }
 
-// another custom helper
-fn rank_helper(
+
+// define a custom helper
+fn money_fmt_helper (
     h: &Helper,
     _: &Handlebars,
     _: &Context,
     _: &mut RenderContext,
     out: &mut dyn Output,
 ) -> Result<(), RenderError> {
-    let rank = h
+    let currency = h
         .param(0)
-        .and_then(|ref v| v.value().as_u64())
-        .ok_or(RenderError::new(
-            "Param 0 with u64 type is required for rank helper.",
-        ))? as usize;
-    let total = h
+        .ok_or(RenderError::new("Param 0 is required for format helper."))?;
+    let amount = h
         .param(1)
-        .as_ref()
-        .and_then(|v| v.value().as_array())
-        .map(|arr| arr.len())
-        .ok_or(RenderError::new(
-            "Param 1 with array type is required for rank helper",
-        ))?;
-    if rank == 0 {
-        out.write("champion")?;
-    } else if rank >= total - 2 {
-        out.write("relegation")?;
-    } else if rank <= 2 {
-        out.write("acl")?;
-    }
+        .ok_or(RenderError::new("Param 0 is required for format helper."))?;
+    let amount_float = amount.value().as_f64().unwrap();
+
+    let rendered = format_money(currency.value().render(), amount_float);
+    out.write(rendered.as_ref())?;
     Ok(())
 }
 
-static TYPES: &'static str = "serde_json";
 
-// define some data
-#[derive(Serialize)]
-pub struct Team {
-    name: String,
-    pts: u16,
+fn format_money(currency: String, amount: f64) -> String {
+    format!("{}{1:.2}", currency, amount)
 }
-
-// produce some data
-pub fn make_data() -> Map<String, Json> {
-    let mut data = Map::new();
-
-    data.insert("year".to_string(), to_json("2015"));
-
-    let teams = vec![
-        Team {
-            name: "Jiangsu Suning".to_string(),
-            pts: 43u16,
-        },
-        Team {
-            name: "Shanghai SIPG".to_string(),
-            pts: 39u16,
-        },
-        Team {
-            name: "Hebei CFFC".to_string(),
-            pts: 27u16,
-        },
-        Team {
-            name: "Guangzhou Evergrand".to_string(),
-            pts: 22u16,
-        },
-        Team {
-            name: "Shandong Luneng".to_string(),
-            pts: 12u16,
-        },
-        Team {
-            name: "Beijing Guoan".to_string(),
-            pts: 7u16,
-        },
-        Team {
-            name: "Hangzhou Greentown".to_string(),
-            pts: 7u16,
-        },
-        Team {
-            name: "Shanghai Shenhua".to_string(),
-            pts: 4u16,
-        },
-    ];
-
-    data.insert("teams".to_string(), to_json(&teams));
-    data.insert("engine".to_string(), to_json(TYPES));
-    data
-}
-
-// fn main() -> Result<(), Box<dyn Error>> {
-//     env_logger::init();
-//     let mut handlebars = Handlebars::new();
-
-//     handlebars.register_helper("format", Box::new(format_helper));
-//     handlebars.register_helper("ranking_label", Box::new(rank_helper));
-//     // handlebars.register_helper("format", Box::new(FORMAT_HELPER));
-
-//     let data = make_data();
-
-// //    let mut source_template = File::open(&"./examples/render_file/template.hbs")?;
-//     let mut source_template = File::open(&"./template.hbs")?;
-//     let mut output_file = File::create("./table.html")?;
-//     handlebars.render_template_source_to_write(&mut source_template, &data, &mut output_file)?;
-//     println!("./table.html generated");
-//     Ok(())
-// }
 
 fn main() {
     env_logger::init();
     let mut handlebars = Handlebars::new();
 
-//     handlebars.register_helper("format", Box::new(format_helper));
-//     handlebars.register_helper("ranking_label", Box::new(rank_helper));
-//     // handlebars.register_helper("format", Box::new(FORMAT_HELPER));
+    handlebars.register_helper("total_amount_due", Box::new(total_amount_due_helper));
+    handlebars.register_helper("money_fmt", Box::new(money_fmt_helper));
 
-//     let data = make_data();
-    let data = make_data2();
+    let data = get_data();
 
     let path = Path::new("./templates/template1.html");
     handlebars.register_template_file("jon", path).expect("render error");
 
+    let start = Instant::now();
+
+    // For each contract found in the data use the template and generated the result
     for contract in data {
         let file_name = format!("./output/contract-{}.html", contract.id);
         let mut output_file = File::create(&file_name).expect("file output open error");
         handlebars.render_to_write("jon", &contract, &mut output_file).expect("render error");
-
-        break;
     }
+
+    let duration = start.elapsed();
+
+    println!("Time elapsed in templating is: {:?}", duration);
 }
 
-
+#[derive(Serialize, Deserialize, Debug)]
+struct Account {
+    days_delinquent: i16,
+    amount_due: f64,
+    account_number: String,
+}
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -189,23 +125,17 @@ struct Contract {
     city: String,
     state: String,
     zip: String,
-    days_delinquent: i16,
-    amount_due: f32,
     client: String,
-    account_number: String,
+    accounts: Vec<Account>,
+    currency: String,
 }
 
 
-fn make_data2() -> Vec<Contract> {
+fn get_data() -> Vec<Contract> {
 
-    let file_contents = fs::read_to_string("./mock_data.json").expect("error on read string from file");
-
-    // let json: serde_json::Value =
-    //     serde_json::from_str(file_contents).expect("JSON was not well-formatted");
+    let file_contents = fs::read_to_string("./mock_data_full.json").expect("error on read string from file");
 
     let array: Vec<Contract> = serde_json::from_str(&file_contents).expect("");
-
-//    println!("Vec=:\n{:?}", array);
 
     array
 }

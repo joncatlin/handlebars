@@ -14,11 +14,7 @@
         </div>
         <script>
             InlineEditor
-                .create( document.querySelector( '#logo' ), {
-                    image: {
-                        toolbar: [ 'imageTextAlternative' ]
-                    }
-                } )
+                .create( document.querySelector( '#logo' ) )
                 .catch( error => {
                     console.error( error );
                 } );
