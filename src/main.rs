@@ -2,52 +2,51 @@ use std::fs;
 use std::collections::HashMap;
 use std::io::{self, BufRead};
 extern crate regex;
-
+use std::path::Path;
+use std::fs::File;
 use regex::Regex;
 use std::fmt;
+use std::io::prelude::*;
+
+use std::io::{BufWriter, Write};
+
 
 fn main() -> std::io::Result<()> {
 
 
-//    let replace_file = File::open("./fields.data")?;
     let file_contents = fs::read_to_string("./fields.data")?;
 
-    let re = Regex::new(r"^\s*(?<key>[A-Za-z0-9]+):\s*(?<value>.*)$").unwrap();
+    let re = Regex::new(r"(?m)^\s*(?P<key>[A-Za-z0-9]+):(?P<value>.*)$").unwrap();
 
-//    let re = Regex::new(r"'([^']+)'\s+\((\d{4})\)").unwrap();
+    // let mut key_val_list = Vec::<(String, String)>::new();
+    
+    
+    let path = Path::new("./fields.json");
 
-    match re.captures(&file_contents) {
-        Ok(caps) => println!("capture groups = {:?}", caps),
-        Err(e) => println("error: {}", e),
+    // Open a file in write-only mode, returns `io::Result<File>`
+    let mut file = match File::create(&path) {
+        Err(why) => panic!("couldn't create file err={}", why),
+        Ok(file) => file,
     };
+    let mut writer = BufWriter::new(&file);
 
-
-    // fn extract_login(input: &str) -> Option<&str> {
-    //     lazy_static! {
-    //         static ref RE: Regex = Regex::new(r"(?x)
-    //             ^(?P<login>[^@\s]+)@
-    //             ([[:word:]]+\.)*
-    //             [[:word:]]+$
-    //             ").unwrap();
-    //     }
-    //     RE.captures(input).and_then(|cap| {
-    //         cap.name("login").map(|login| login.as_str())
-    //     })
+    // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
+//    file.write_all("Hello jon23".as_bytes())?;
+    // {
+    //     Err(why) => panic!("couldn't write to {}: {}", display, why.description()),
+    //     Ok(_) => println!("successfully wrote to {}", display),
     // }
 
 
 
+//     let mut json_str = String::with_capacity(50000);
 
+    write!(writer, "{{\n");
 
-
-
-    // let mut empty = HashMap::new();
-    // let account_details = make_hashmap (&mut empty);
-    // println!("Hashmap={:?}", account_details);
-
-    // let replace_file = File::open("./data/Google.html")?;
-    // let mut buffer = String::new();
-    // let result = replace(replace_file,String::from("{{"), String::from("}}"), account_details, &mut buffer);
+    for caps in re.captures_iter(&file_contents) {
+        write!(writer, "\t\"{}\":\"{}\",\n", &caps["key"], &caps["value"].trim());
+    }
+    write!(writer, "}}\n");
 
     Ok(())
 }
