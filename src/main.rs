@@ -89,6 +89,27 @@ fn main() {
 
     let path = Path::new("./templates/template1.html");
     handlebars.register_template_file("template1", path).expect("render error");
+
+    // Get the template structure to access the fields within it
+    let template1 = handlebars.get_template("template1").unwrap();
+    println!("Temaple1 has fields {:?}", template1);
+
+    // Print out the mapping information held in the template
+    match &template1.mapping {
+        Some(map) => {
+            for entry in map {
+                println!("mapping is: {:?}", entry);
+            };
+        },
+        None => println!("No mappings found"),
+    }
+
+    // Print out the template elements
+    for e in &template1.elements {
+        println!("Element: {:?}\n", e);
+    }
+
+
     let path = Path::new("./templates/template2.html");
     handlebars.register_template_file("template2", path).expect("render error");
 
