@@ -19,8 +19,10 @@ use std::fs::File;
 use std::io::{Read, Write};
 
 use handlebars::{
-    to_json, Context, Handlebars, Helper, JsonRender, Output, RenderContext, RenderError,
+    to_json, Context, Handlebars, Helper, JsonRender, Output, RenderContext, RenderError, 
 };
+
+use  handlebars::template:: {TemplateElement, HelperTemplate};
 
 use std::fs;
 
@@ -105,10 +107,11 @@ fn main() {
     }
 
     // Print out the template elements
-    for e in &template1.elements {
-        println!("Element: {:?}\n", e);
-    }
+    // for e in &template1.elements {
+    //     println!("Element: {:?}\n", e);
+    // }
 
+    get_fields(&template1.elements);
 
     let path = Path::new("./templates/template2.html");
     handlebars.register_template_file("template2", path).expect("render error");
@@ -180,4 +183,41 @@ fn get_data() -> Vec<Contract> {
     let array: Vec<Contract> = serde_json::from_str(&file_contents).expect("");
 
     array
+}
+
+
+fn get_fields(elements: &Vec<TemplateElement>) {
+
+    for e in elements {
+        match(e) {
+            TemplateElement::Expression(exp) => println!("Expression: {:?}", exp),
+            TemplateElement::RawString(s) => println!(""),
+            TemplateElement::HTMLExpression(html) => println!(""),
+            TemplateElement::HelperBlock(hb) => println!("HelperBlock: {:?}", hb),
+            TemplateElement::DecoratorExpression(de) => println!("DecoratorTemplate: {:?}", de),
+            TemplateElement::DecoratorBlock(db) => println!("DecoratorBlock: {:?}", db),
+            TemplateElement::PartialExpression(pe) => println!("DecoratorTemplte: {:?}", pe),
+            TemplateElement::PartialBlock(pb) => println!("PartialBlock: {:?}", pb),
+            TemplateElement::Comment(c) => println!(""),
+        }
+        println!("\n");
+    }
+
+}
+
+
+fn get_fields_helper_template(ht: HelperTemplate) {
+    match (ht) {
+
+    }
+}
+
+
+fn get_fields_parameter(p: Parameter) {
+    match (p) {
+        Parameter::Name(s) => ,
+        Parameter::Path(p) =>,
+        Parameter::Literal(j) =>,
+        Parameter::Subexpression(u) =>,        
+    }
 }
