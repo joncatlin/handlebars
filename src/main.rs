@@ -1,5 +1,7 @@
 #![allow(unused_imports, dead_code)]
 extern crate env_logger;
+#[macro_use] 
+extern crate log;
 extern crate handlebars;
 extern crate serde;
 #[macro_use]
@@ -19,10 +21,12 @@ use std::fs::File;
 use std::io::{Read, Write};
 
 use handlebars::{
-    to_json, Context, Handlebars, Helper, JsonRender, Output, RenderContext, RenderError, 
+    to_json, Context, Handlebars, Helper, JsonRender, Output, RenderContext, RenderError,
 };
 
-use  handlebars::template:: {TemplateElement, HelperTemplate};
+use handlebars::template:: {TemplateElement, HelperTemplate, Parameter};
+use handlebars::Path:: {Relative, Local};
+
 
 use std::fs;
 
@@ -94,31 +98,33 @@ fn main() {
 
     // Get the template structure to access the fields within it
     let template1 = handlebars.get_template("template1").unwrap();
-    println!("Temaple1 has fields {:?}", template1);
+    debug!("Temaple1 has fields {:?}", template1);
 
-    // Print out the mapping information held in the template
-    match &template1.mapping {
-        Some(map) => {
-            for entry in map {
-                println!("mapping is: {:?}", entry);
-            };
-        },
-        None => println!("No mappings found"),
-    }
+    // // Print out the mapping information held in the template
+    // match &template1.mapping {
+    //     Some(map) => {
+    //         for entry in map {
+    //             ("mapping is: {:?}", entry);
+    //         };
+    //     },
+    //     None => debug!("No mappings found"),
+    // }
 
     // Print out the template elements
     // for e in &template1.elements {
-    //     println!("Element: {:?}\n", e);
+    //     debug!("Element: {:?}\n", e);
     // }
 
-    get_fields(&template1.elements);
+    let mut fields = Vec::<&str>::new();
+    get_fields(&template1.elements, fields);
+    debug!("ALL FIELDS FOUND: {:?}", fields);
 
     let path = Path::new("./templates/template2.html");
     handlebars.register_template_file("template2", path).expect("render error");
 
     let start = Instant::now();
 
-    // For each contract found in the data use the template and generated the result
+    // For each contract found in the data use the template and generate the result
     for contract in &data {
         let file_name = format!("./output/contract-{}.html", contract.id);
         let mut output_file = File::create(&file_name).expect("file output open error");
@@ -127,7 +133,7 @@ fn main() {
 
     let duration = start.elapsed();
 
-    println!("Time elapsed for rendering template1 is: {:?}", duration);
+    debug!("Time elapsed for rendering template1 is: {:?}", duration);
 
 
     // For each contract found in the data use the template and generated the result
@@ -139,7 +145,7 @@ fn main() {
 
     let duration = start.elapsed();
 
-    println!("Time elapsed for rendering template2 is: {:?}", duration);
+    debug!("Time elapsed for rendering template2 is: {:?}", duration);
 
 
 
@@ -186,38 +192,62 @@ fn get_data() -> Vec<Contract> {
 }
 
 
-fn get_fields(elements: &Vec<TemplateElement>) {
+fn get_fields(elements: &Vec<TemplateElement>, mut fields: Vec<&str>) {
 
     for e in elements {
         match(e) {
-            TemplateElement::Expression(exp) => println!("Expression: {:?}", exp),
-            TemplateElement::RawString(s) => println!(""),
-            TemplateElement::HTMLExpression(html) => println!(""),
-            TemplateElement::HelperBlock(hb) => println!("HelperBlock: {:?}", hb),
-            TemplateElement::DecoratorExpression(de) => println!("DecoratorTemplate: {:?}", de),
-            TemplateElement::DecoratorBlock(db) => println!("DecoratorBlock: {:?}", db),
-            TemplateElement::PartialExpression(pe) => println!("DecoratorTemplte: {:?}", pe),
-            TemplateElement::PartialBlock(pb) => println!("PartialBlock: {:?}", pb),
-            TemplateElement::Comment(c) => println!(""),
+            TemplateElement::Expression(exp) => {
+                debug!("Expression: {:?}", exp);
+                get_fields_helper_template(&exp, fields)
+            },
+            TemplateElement::RawString(s) => debug!(""),
+            TemplateElement::HTMLExpression(html) => debug!(""),
+            TemplateElement::HelperBlock(hb) => {
+                debug!("HelperBlock: {:?}", hb);
+                get_fields_helper_template(&hb, fields)
+            },
+            TemplateElement::DecoratorExpression(de) => debug!("DecoratorTemplate: {:?}", de),
+            TemplateElement::DecoratorBlock(db) => debug!("DecoratorBlock: {:?}", db),
+            TemplateElement::PartialExpression(pe) => debug!("DecoratorTemplte: {:?}", pe),
+            TemplateElement::PartialBlock(pb) => debug!("PartialBlock: {:?}", pb),
+            TemplateElement::Comment(c) => debug!(""),
         }
-        println!("\n");
+        debug!("\n");
     }
 
 }
 
 
-fn get_fields_helper_template(ht: HelperTemplate) {
-    match (ht) {
+fn get_fields_helper_template(ht: &HelperTemplate, mut fields: Vec<&str>) {
 
+    get_fields_parameter(&ht.name, fields);
+    for param in &ht.params {
+        get_fields_parameter(&param, fields)
     }
+//    hash: HashMap<String, Parameter>
 }
 
 
-fn get_fields_parameter(p: Parameter) {
+fn get_fields_parameter(p: &Parameter, mut fields: Vec<&str>) {
     match (p) {
-        Parameter::Name(s) => ,
-        Parameter::Path(p) =>,
-        Parameter::Literal(j) =>,
-        Parameter::Subexpression(u) =>,        
+        Parameter::Name(s) => debug!("Founf Name: {}\n", s),
+        Parameter::Path(path) => {
+            debug!("Found Path: {:?} - adding it to list of fields\n", path);
+            match path {
+                Relative(tup1) => {
+                    let (_, var_name) = tup1;
+                    println!("RELATIVE with name={}", var_name);
+                    fields.push(&var_name.to_string());
+                },
+                Local(tup2) => println!("LOCAL"),                
+            }
+//            let (_, name) = path.Relative;
+            //     Path::Relative(tup) => tup,
+            //     Path::Local(l) => (_, "Error in get_fields_parameter when Path"),
+            // };
+//            fields.push(path.raw());
+        },
+        Parameter::Literal(j) => debug!("Found Literal: {:?}", j),
+        Parameter::Subexpression(u) => debug!("Found Subexpression: {:?}", u),        
     }
 }
